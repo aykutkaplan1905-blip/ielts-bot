@@ -91,7 +91,7 @@ def notify(title: str, body: str, click: str | None = None):
         return
 
     sent = False
-    topic = os.environ.get("NTFY_TOPIC")
+        topic = (os.environ.get("NTFY_TOPIC") or "").strip()
     if topic:
         payload = {
             "topic": topic,
