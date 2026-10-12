@@ -18,6 +18,7 @@ Kullanım:
 import json
 import os
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
@@ -81,8 +82,13 @@ def post(url: str, data: bytes, content_type: str):
     req = urllib.request.Request(
         url, data=data, headers={"Content-Type": content_type, "User-Agent": UA}
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        r.read()
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read()
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:500]
+        host = urllib.parse.urlparse(url).netloc
+        sys.exit(f"HATA: {host} isteği reddetti ({e.code}): {detail}")
 
 
 def notify(title: str, body: str, click: str | None = None):
@@ -91,7 +97,10 @@ def notify(title: str, body: str, click: str | None = None):
         return
 
     sent = False
-        topic = (os.environ.get("NTFY_TOPIC") or "").strip()
+    topic = (os.environ.get("NTFY_TOPIC") or "").strip()
+    if "/" in topic:
+        # "https://ntfy.sh/konu-adi" gibi tam adres girildiyse sadece konu adını al
+        topic = topic.rstrip("/").rsplit("/", 1)[-1]
     if topic:
         payload = {
             "topic": topic,
