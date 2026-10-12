@@ -1,0 +1,39 @@
+name: IELTS takibi
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: ielts-takibi
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sayfayı kontrol et
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python ielts_bot.py
+
+      - name: Oturum listesini kaydet
+        run: |
+          git config user.name "ielts-bot"
+          git config user.email "ielts-bot@users.noreply.github.com"
+          git add seen_sessions.json
+          if [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt 3888000 ]; then
+            date -u +%F > .keepalive && git add .keepalive
+          fi
+          git diff --cached --quiet || (git commit -m "IELTS oturum listesi güncellendi" && git push)
